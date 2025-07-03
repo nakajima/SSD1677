@@ -3,7 +3,11 @@
 //! This module implements the functions required to communicate and interface
 //! with the SSD1677 display controller. It provides a trait for display
 //! communication and a specific implementation for 4-pin SPI mode.
-use embedded_hal;
+use embedded_hal::{
+    self,
+    digital::{InputPin, OutputPin},
+    spi::SpiDevice,
+};
 
 /// 10ms reset delay as seen in box 2 in chapter 9.1 in the SSD1677 datasheet
 pub const RESET_DELAY_MS: u8 = 10;
@@ -42,23 +46,20 @@ pub trait DisplayInterface {
 /// the SSD1677 display controller using a 4-pin SPI interface. It includes
 /// methods for sending commands and data, as well as handling the reset and
 /// busy states of the display.
-pub struct Interface4Pin<SPI, OUT, IN> {
+pub struct Interface4Pin<SPI, DC: OutputPin, RESE: OutputPin, BUSY: InputPin> {
     /// The SpiDevice to communicate with the display
     spi: SPI,
     /// Data / Command pin, 0=command, 1=data
-    data_command_pin: OUT,
+    data_command_pin: DC,
     /// The reset pin for the display
-    pub reset_pin: OUT,
+    pub reset_pin: RESE,
     /// The pin from the controller indicating busy
-    busy_pin: IN,
+    busy_pin: BUSY,
 }
 
 // Implement the interface functions
-impl<SPI, OUT, IN> Interface4Pin<SPI, OUT, IN>
-where
-    SPI: embedded_hal::spi::SpiDevice,
-    OUT: embedded_hal::digital::OutputPin,
-    IN: embedded_hal::digital::InputPin,
+impl<SPI: SpiDevice, DC: OutputPin, RESE: OutputPin, BUSY: InputPin>
+    Interface4Pin<SPI, DC, RESE, BUSY>
 {
     /// Create a new `Interface4Pin`.
     ///
@@ -75,7 +76,7 @@ where
     /// # Returns
     ///
     /// * `Self` - A new instance of `Interface4Pin`.
-    pub fn new(spi: SPI, data_command_pin: OUT, reset_pin: OUT, busy_pin: IN) -> Self {
+    pub fn new(spi: SPI, data_command_pin: DC, reset_pin: RESE, busy_pin: BUSY) -> Self {
         Self {
             spi,
             data_command_pin,
@@ -113,11 +114,8 @@ where
 }
 
 /// Implement the DisplayInterface functions
-impl<SPI, OUT, IN> DisplayInterface for Interface4Pin<SPI, OUT, IN>
-where
-    SPI: embedded_hal::spi::SpiDevice,
-    OUT: embedded_hal::digital::OutputPin,
-    IN: embedded_hal::digital::InputPin,
+impl<SPI: SpiDevice, DC: OutputPin, RESE: OutputPin, BUSY: InputPin> DisplayInterface
+    for Interface4Pin<SPI, DC, RESE, BUSY>
 {
     type Error = SPI::Error;
 

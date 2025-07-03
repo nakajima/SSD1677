@@ -1,4 +1,9 @@
 //! This module defines the commands to the [Display](crate::display::Display) and the valid options to those commands.
+use embedded_hal::{
+    digital::{InputPin, OutputPin},
+    spi::SpiDevice,
+};
+
 use crate::interface::{DisplayInterface, Interface4Pin};
 
 /// The address increment orientation when writing image data.
@@ -110,10 +115,6 @@ where
 
     fn write_ram_black_and_white(&mut self, data: &[u8]) -> Result<(), SPI::Error>;
 
-    fn write_ram_red(&mut self, data: &[u8]) -> Result<(), SPI::Error>;
-
-    fn auto_write_ram_red_regular_pattern(&mut self, value: u8) -> Result<(), SPI::Error>;
-
     fn auto_write_ram_black_and_white_regular_pattern(
         &mut self,
         value: u8,
@@ -145,7 +146,6 @@ where
     fn update_display_option1(
         &mut self,
         black_and_white_option: RamOption,
-        red_option: RamOption,
     ) -> Result<(), SPI::Error>;
 
     fn update_display_option2(&mut self, option: u8) -> Result<(), SPI::Error>;
@@ -167,11 +167,8 @@ where
 }
 
 /// A command that can be issued to the SSD1677 controller
-impl<SPI, OUT, IN> DisplayCommands<SPI> for Interface4Pin<SPI, OUT, IN>
-where
-    SPI: embedded_hal::spi::SpiDevice,
-    OUT: embedded_hal::digital::OutputPin,
-    IN: embedded_hal::digital::InputPin,
+impl<SPI: SpiDevice, DC: OutputPin, RESE: OutputPin, BUSY: InputPin> DisplayCommands<SPI>
+    for Interface4Pin<SPI, DC, RESE, BUSY>
 {
     /// Set the MUX of gate lines, scanning sequence and direction
     fn set_driver_output_control(
@@ -219,20 +216,6 @@ where
     fn write_ram_black_and_white(&mut self, data: &[u8]) -> Result<(), SPI::Error> {
         self.send_command(0x24)?;
         self.send_data(data)?;
-        Ok(())
-    }
-
-    /// Write data to the red RAM buffer
-    fn write_ram_red(&mut self, data: &[u8]) -> Result<(), SPI::Error> {
-        self.send_command(0x26)?;
-        self.send_data(data)?;
-        Ok(())
-    }
-
-    /// Fill the red RAM buffer with a single value
-    fn auto_write_ram_red_regular_pattern(&mut self, value: u8) -> Result<(), SPI::Error> {
-        self.send_command(0x46)?;
-        self.send_data(&[value])?;
         Ok(())
     }
 
@@ -375,11 +358,9 @@ where
     fn update_display_option1(
         &mut self,
         black_and_white_option: RamOption,
-        red_option: RamOption,
     ) -> Result<(), SPI::Error> {
         // Create the data value
-        let data: u8 = (red_option as u8 & 0b1111) << 4     //Set the red option
-        | (black_and_white_option as u8 & 0b1111); // Set the BW opiton
+        let data: u8 = black_and_white_option as u8 & 0b1111;
 
         // Send the command and data
         self.send_command(0x21)?;

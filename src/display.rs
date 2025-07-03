@@ -148,9 +148,6 @@ where
         self.interface
             .auto_write_ram_black_and_white_regular_pattern(0xF7)
             .expect("Failed to fill BW RAM");
-        self.interface
-            .auto_write_ram_red_regular_pattern(0xF7)
-            .expect("Failed to fill RED RAM");
 
         // Set gate driver output
         self.interface
@@ -201,8 +198,7 @@ where
 
     /// Update the display contents by writing the supplied buffers to the controller.
     ///
-    /// This function takes two optional buffers: one for the black and white pixels
-    /// and another for the red pixels. If a buffer is provided, it will be written to
+    /// If a buffer is provided, it will be written to
     /// the corresponding RAM of the display controller. The function will reset the
     /// RAM address before writing the data and will busy wait until the display refresh
     /// has completed.
@@ -211,8 +207,6 @@ where
     ///
     /// * `bw_buffer` - an optional slice of bytes representing the black and white pixel data.
     ///                 If `None`, the black and white RAM will not be updated.
-    /// * `red_buffer` - An optional slice of bytes representing the red pixel data.
-    ///                  If `None`, the red RAM will not be updated.
     /// * `update_mode` - The kond of update to do, see [DisplayUpdateMode]
     ///
     /// # Returns
@@ -222,7 +216,6 @@ where
     pub fn update(
         &mut self,
         bw_buffer: Option<&[u8]>,
-        red_buffer: Option<&[u8]>,
         update_mode: DisplayUpdateMode,
     ) -> Result<(), <I as DisplayInterface>::Error> {
         // Write the black and white RAM if provided
@@ -239,22 +232,6 @@ where
             self.interface
                 .write_ram_black_and_white(buffer)
                 .expect("Failed to write black and white RAM buffer");
-        }
-
-        // Write the red RAM if provided
-        if let Some(buffer) = red_buffer {
-            // Reset the address
-            self.interface
-                .set_ram_x_count(0)
-                .expect("Failed to set RAM address for x");
-            self.interface
-                .set_ram_y_count(0)
-                .expect("Failed to set RAM address for y");
-
-            // Copy the data
-            self.interface
-                .write_ram_red(buffer)
-                .expect("Failed to write RED RAM buffer");
         }
 
         // Set the update mode

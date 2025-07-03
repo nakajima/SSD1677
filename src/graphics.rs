@@ -33,7 +33,6 @@ where
 {
     display: Display<I, SPI>, // The underlying display interface
     bw_buffer: &'a mut [u8],  // The buffer for black and white pixel data
-                              // TODO: Implement RED support
 }
 
 impl<'a, I, SPI> GraphicsDisplayBlackAndWhite<'a, I, SPI>
@@ -71,7 +70,7 @@ where
         &mut self,
         mode: DisplayUpdateMode,
     ) -> Result<(), <I as DisplayInterface>::Error> {
-        self.display.update(Some(self.bw_buffer), None, mode)
+        self.display.update(Some(self.bw_buffer), mode)
     }
 
     #[cfg(not(feature = "graphics"))]
